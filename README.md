@@ -1,6 +1,17 @@
-# DataDoctor-AI
-DataDoctor AI is a Software-as-a-Service (SaaS) platform designed to automate dataset profiling, data quality assessment, and data cleaning.
+# DataDoctor AI
 
-The platform enables users to upload datasets and quickly identify data quality issues, receive cleaning recommendations, apply automated cleaning actions, and download analysis-ready datasets.
+DataDoctor AI is a SaaS platform for automated dataset profiling, data quality assessment, data cleaning, and reporting.
 
-The primary objective is to significantly reduce the time analysts and organizations spend preparing data before analysis, reporting, and decision-making.
+## Tech Stack
+
+- Django
+- PostgreSQL
+- Docker
+- Pandas
+- NumPy
+- OpenPyXL
+- ReportLab
+
+## Status
+
+Milestone 0 - Environment Setup
