@@ -4,7 +4,7 @@ services:
     build: .
     container_name: datadoctor-web
 
-    command: sh docker/entrypoint.sh
+    command: python manage.py runserver 0.0.0.0:8000 #sh docker/entrypoint.sh
 
     volumes:
       - .:/app
