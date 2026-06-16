@@ -4,10 +4,12 @@ from django.views.generic import (
     CreateView,
     ListView,
 )
+from django.shortcuts import get_object_or_404
+from django.views.generic import TemplateView
 
+from apps.profiling.models import DatasetProfile
 from .forms import DatasetUploadForm
 from .models import Dataset
-
 
 class DatasetUploadView(
     LoginRequiredMixin,
@@ -57,3 +59,27 @@ class DatasetListView(
         return Dataset.objects.filter(
             user=self.request.user
         )
+
+class DatasetProfileView(
+    LoginRequiredMixin,
+    TemplateView
+):
+
+    template_name = "datasets/profile.html"
+
+    def get_context_data(self, **kwargs):
+
+        context = super().get_context_data(**kwargs)
+
+        dataset = get_object_or_404(
+            Dataset,
+            id=self.kwargs["dataset_id"],
+            user=self.request.user
+        )
+
+        profile = dataset.profile
+
+        context["dataset"] = dataset
+        context["profile"] = profile
+
+        return context

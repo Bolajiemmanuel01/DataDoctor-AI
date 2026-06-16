@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dataset Profile</title>
+</head>
+<body>
+
+<h1>{{ dataset.name }}</h1>
+
+<hr>
+
+<h2>Dataset Summary</h2>
+
+<p>
+    Row Count:
+    {{ profile.row_count }}
+</p>
+
+<p>
+    Column Count:
+    {{ profile.column_count }}
+</p>
+
+<p>
+    Duplicate Rows:
+    {{ profile.duplicate_rows }}
+</p>
+
+<hr>
+
+<h2>Missing Values</h2>
+
+<pre>
+{{ profile.missing_values }}
+</pre>
+
+<hr>
+
+<h2>Data Types</h2>
+
+<pre>
+{{ profile.data_type_summary }}
+</pre>
+
+<hr>
+
+<h2>Unique Values</h2>
+
+<pre>
+{{ profile.unique_value_summary }}
+</pre>
+
+<hr>
+
+<a href="{% url 'datasets:list' %}">
+    Back to Datasets
+</a>
+
+</body>
+</html>

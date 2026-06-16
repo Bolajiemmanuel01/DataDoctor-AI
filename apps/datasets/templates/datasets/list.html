@@ -18,9 +18,19 @@
 {% for dataset in datasets %}
 
     <li>
+
         {{ dataset.name }}
+
         -
+
         {{ dataset.status }}
+
+        -
+
+        <a href="{% url 'datasets:profile' dataset.id %}">
+            View Profile
+        </a>
+
     </li>
 
 {% empty %}
