@@ -77,7 +77,11 @@ class DatasetProfileView(
             user=self.request.user
         )
 
-        profile = dataset.profile
+        profile = getattr(
+            dataset,
+            "profile",
+            None
+        )
 
         context["dataset"] = dataset
         context["profile"] = profile

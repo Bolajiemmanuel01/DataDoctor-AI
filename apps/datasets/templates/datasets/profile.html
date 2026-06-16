@@ -9,46 +9,55 @@
 
 <hr>
 
-<h2>Dataset Summary</h2>
+{% if profile %}
 
-<p>
-    Row Count:
-    {{ profile.row_count }}
-</p>
+    <h2>Dataset Summary</h2>
 
-<p>
-    Column Count:
-    {{ profile.column_count }}
-</p>
+    <p>
+        Row Count:
+        {{ profile.row_count }}
+    </p>
 
-<p>
-    Duplicate Rows:
-    {{ profile.duplicate_rows }}
-</p>
+    <p>
+        Column Count:
+        {{ profile.column_count }}
+    </p>
 
-<hr>
+    <p>
+        Duplicate Rows:
+        {{ profile.duplicate_rows }}
+    </p>
 
-<h2>Missing Values</h2>
+    <hr>
 
-<pre>
-{{ profile.missing_values }}
-</pre>
+    <h2>Missing Values</h2>
 
-<hr>
+    <pre>
+    {{ profile.missing_values }}
+    </pre>
 
-<h2>Data Types</h2>
+    <hr>
 
-<pre>
-{{ profile.data_type_summary }}
-</pre>
+    <h2>Data Types</h2>
 
-<hr>
+    <pre>
+    {{ profile.data_type_summary }}
+    </pre>
 
-<h2>Unique Values</h2>
+    <hr>
 
-<pre>
-{{ profile.unique_value_summary }}
-</pre>
+    <h2>Unique Values</h2>
+
+    <pre>
+    {{ profile.unique_value_summary }}
+    </pre>
+{% else %}
+
+    <h2>
+        Profile not available.
+    </h2>
+
+{% endif %}
 
 <hr>
 
