@@ -4,6 +4,8 @@ from django.conf import settings
 
 from apps.core.models import BaseModel
 
+from .validators import validate_dataset_file
+
 class DatasetStatus(models.TextChoices):
     UPLOADED = "UPLOADED", "Uploaded"
     PROFILING = "PROFILING", "Profiling"
@@ -30,7 +32,8 @@ class Dataset(BaseModel):
     )
 
     original_file = models.FileField(
-        upload_to="datasets/"
+        upload_to="datasets/",
+        validators=[validate_dataset_file],
     )
 
     file_type = models.CharField(
@@ -47,6 +50,25 @@ class Dataset(BaseModel):
 
     class Meta:
         ordering = ["-created_at"]
+    
+    def save(self, *args, **kwargs):
+
+        if self.original_file:
+
+            self.file_size = self.original_file.size
+
+            filename = self.original_file.name.lower()
+
+            if filename.endswith(".csv"):
+                self.file_type = "csv"
+
+            elif filename.endswith(".xlsx"):
+                self.file_type = "xlsx"
+
+        super().save(*args, **kwargs)
+
 
     def __str__(self):
         return self.name
+    
+    

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Datasets</title>
+</head>
+<body>
+
+<h1>My Datasets</h1>
+
+<a href="{% url 'datasets:upload' %}">
+    Upload New Dataset
+</a>
+
+<hr>
+
+<ul>
+
+{% for dataset in datasets %}
+
+    <li>
+        {{ dataset.name }}
+        -
+        {{ dataset.status }}
+    </li>
+
+{% empty %}
+
+    <li>
+        No datasets uploaded.
+    </li>
+
+{% endfor %}
+
+</ul>
+
+</body>
+</html>
