@@ -27,40 +27,52 @@ class ProfilingService:
     @staticmethod
     def generate_profile(dataset: Dataset):
 
-        df = ProfilingService.load_dataframe(dataset)
+        try:
+            dataset.status = "PROFILING"
+            dataset.save()
 
-        profile_data = {
+            df = ProfilingService.load_dataframe(dataset)
 
-            "row_count": len(df),
+            profile_data = {
 
-            "column_count": len(df.columns),
+                "row_count": len(df),
 
-            "missing_values": (
-                df.isnull()
-                .sum()
-                .to_dict()
-            ),
+                "column_count": len(df.columns),
 
-            "duplicate_rows": int(
-                df.duplicated().sum()
-            ),
+                "missing_values": (
+                    df.isnull()
+                    .sum()
+                    .to_dict()
+                ),
 
-            "unique_value_summary": {
-                column: int(df[column].nunique())
-                for column in df.columns
-            },
+                "duplicate_rows": int(
+                    df.duplicated().sum()
+                ),
 
-            "data_type_summary": {
-                column: str(df[column].dtype)
-                for column in df.columns
-            },
-        }
+                "unique_value_summary": {
+                    column: int(df[column].nunique())
+                    for column in df.columns
+                },
 
-        profile, created = (
-            DatasetProfile.objects.update_or_create(
-                dataset=dataset,
-                defaults=profile_data,
+                "data_type_summary": {
+                    column: str(df[column].dtype)
+                    for column in df.columns
+                },
+            }
+
+            profile, created = (
+                DatasetProfile.objects.update_or_create(
+                    dataset=dataset,
+                    defaults=profile_data,
+                )
             )
-        )
 
-        return profile
+            dataset.status = "PROFILED"
+            dataset.save()
+
+            return profile
+        
+        except Exception:
+            dataset.status = "FAILED"
+            dataset.save()
+            raise

@@ -28,7 +28,17 @@ class DatasetUploadView(
 
         form.instance.user = self.request.user
 
-        return super().form_valid(form)
+        response = super().form_valid(form)
+
+        from apps.profiling.services.profiling_service import (
+            ProfilingService
+        )
+
+        ProfilingService.generate_profile(
+            self.object
+        )
+
+        return response
 
 
 class DatasetListView(
