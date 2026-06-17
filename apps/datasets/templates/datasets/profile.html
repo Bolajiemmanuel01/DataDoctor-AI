@@ -5,59 +5,137 @@
 </head>
 <body>
 
-<h1>{{ dataset.name }}</h1>
+<h2>Dataset Information</h2>
 
-<hr>
+{% if dataset.status == "PROFILED" %}
 
-{% if profile %}
-
-    <h2>Dataset Summary</h2>
-
-    <p>
-        Row Count:
-        {{ profile.row_count }}
-    </p>
-
-    <p>
-        Column Count:
-        {{ profile.column_count }}
-    </p>
-
-    <p>
-        Duplicate Rows:
-        {{ profile.duplicate_rows }}
-    </p>
-
-    <hr>
-
-    <h2>Missing Values</h2>
-
-    <pre>
-    {{ profile.missing_values }}
-    </pre>
-
-    <hr>
-
-    <h2>Data Types</h2>
-
-    <pre>
-    {{ profile.data_type_summary }}
-    </pre>
-
-    <hr>
-
-    <h2>Unique Values</h2>
-
-    <pre>
-    {{ profile.unique_value_summary }}
-    </pre>
-{% else %}
-
-    <h2>
-        Profile not available.
-    </h2>
+<p>
+✅ Dataset successfully profiled
+</p>
 
 {% endif %}
+
+<table border="1">
+
+<tr>
+    <td>Name</td>
+    <td>{{ dataset.name }}</td>
+</tr>
+
+<tr>
+    <td>File Type</td>
+    <td>{{ dataset.file_type }}</td>
+</tr>
+
+<tr>
+    <td>File Size</td>
+    <td>{{ dataset.file_size }}</td>
+</tr>
+
+<tr>
+    <td>Status</td>
+    <td>{{ dataset.status }}</td>
+</tr>
+
+<tr>
+    <td>Created</td>
+    <td>{{ dataset.created_at }}</td>
+</tr>
+
+</table>
+
+<h2>Summary Statistics</h2>
+
+<ul>
+
+<li>
+Rows:
+{{ profile.row_count }}
+</li>
+
+<li>
+Columns:
+{{ profile.column_count }}
+</li>
+
+<li>
+Duplicate Rows:
+{{ profile.duplicate_rows }}
+</li>
+
+</ul>
+
+<h2>Columns</h2>
+
+<ul>
+
+{% for column in profile.column_names %}
+
+<li>{{ column }}</li>
+
+{% endfor %}
+
+</ul>
+
+<h2>Missing Values</h2>
+
+<table border="1">
+
+<tr>
+    <th>Column</th>
+    <th>Missing Count</th>
+</tr>
+
+{% for column, count in profile.missing_values.items %}
+
+<tr>
+    <td>{{ column }}</td>
+    <td>{{ count }}</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+<h2>Data Types</h2>
+
+<table border="1">
+
+<tr>
+    <th>Column</th>
+    <th>Type</th>
+</tr>
+
+{% for column, dtype in profile.data_type_summary.items %}
+
+<tr>
+    <td>{{ column }}</td>
+    <td>{{ dtype }}</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+<h2>Unique Values</h2>
+
+<table border="1">
+
+<tr>
+    <th>Column</th>
+    <th>Unique Count</th>
+</tr>
+
+{% for column, count in profile.unique_value_summary.items %}
+
+<tr>
+    <td>{{ column }}</td>
+    <td>{{ count }}</td>
+</tr>
+
+{% endfor %}
+
+</table>
 
 <hr>
 

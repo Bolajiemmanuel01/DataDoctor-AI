@@ -23,6 +23,10 @@ class DatasetProfile(BaseModel):
         default=0
     )
 
+    column_names = models.JSONField(
+        default=list
+    )
+
     missing_values = models.JSONField(
         default=dict
     )

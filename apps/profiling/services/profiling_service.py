@@ -39,6 +39,8 @@ class ProfilingService:
 
                 "column_count": len(df.columns),
 
+                "column_names": list(df.columns),
+
                 "missing_values": (
                     df.isnull()
                     .sum()
