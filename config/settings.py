@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "apps.datasets",
     "apps.core",
     "apps.profiling",
+    "apps.cleaning",
 ]
 
 MIDDLEWARE = [
