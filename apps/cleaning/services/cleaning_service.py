@@ -116,6 +116,37 @@ class CleaningService:
 
 
     @staticmethod
+    def standardize_text(df, columns):
+
+        standardized_columns = []
+
+        for column in columns:
+
+            if column in df.columns:
+
+                df[column] = (
+                    df[column]
+                    .astype(str)
+                    .str.strip()
+                    .str.replace(
+                        r'\s+',
+                        ' ',
+                        regex=True
+                    )
+                    .str.title()
+                )
+
+                standardized_columns.append(column)
+
+        summary = {
+            "text_standardized": True,
+            "standardized_columns": standardized_columns,
+        }
+
+        return df, summary
+
+
+    @staticmethod
     def run_cleaning(dataset):
 
         job = CleaningJob.objects.create(
