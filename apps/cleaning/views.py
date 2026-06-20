@@ -25,7 +25,7 @@ class RunCleaningView(
         )
 
         job = (
-            CleaningService.remove_duplicates(
+            CleaningService.run_cleaning(
                 dataset
             )
         )

@@ -33,6 +33,28 @@ class CleaningService:
 
     
     @staticmethod
+    def remove_duplicates(df):
+
+        rows_before = len(df)
+
+        cleaned_df = df.drop_duplicates()
+
+        rows_after = len(cleaned_df)
+
+        duplicates_removed = (
+            rows_before - rows_after
+        )
+
+        summary = {
+            "rows_before": rows_before,
+            "rows_after": rows_after,
+            "duplicates_removed": duplicates_removed,
+        }
+
+        return cleaned_df, summary
+
+
+    @staticmethod
     def handle_missing_values(df):
 
         missing_before = int(
@@ -67,13 +89,34 @@ class CleaningService:
             missing_before - missing_after
         )
 
-        return df, filled_values
+        summary = {
+            "missing_values_filled": filled_values
+        }
+
+        return df, summary
+    
+
+    @staticmethod
+    def export_cleaned_file(df, dataset):
+
+        output_filename = (
+            f"{dataset.id}_cleaned.csv"
+        )
+
+        output_path = (
+            f"/tmp/{output_filename}"
+        )
+
+        df.to_csv(
+            output_path,
+            index=False
+        )
+
+        return output_filename, output_path
 
 
     @staticmethod
-    def remove_duplicates(
-        dataset: Dataset
-    ):
+    def run_cleaning(dataset):
 
         job = CleaningJob.objects.create(
             dataset=dataset,
@@ -82,58 +125,29 @@ class CleaningService:
 
         try:
 
-            df = (
-                CleaningService.load_dataframe(
-                    dataset
-                )
-            )
+            df = CleaningService.load_dataframe(dataset)
 
             df = (
                 DataPreprocessingService
                 .preprocess_dataframe(df)
             )
 
-            rows_before = len(df)
+            df, duplicate_summary = (
+                CleaningService.remove_duplicates(df)
+            )
 
-            cleaned_df = df.drop_duplicates()
+            df, missing_summary = (
+                CleaningService.handle_missing_values(df)
+            )
 
-            cleaned_df, missing_filled = (
-                CleaningService.handle_missing_values(
-                    cleaned_df
+            output_filename, output_path = (
+                CleaningService.export_cleaned_file(
+                    df,
+                    dataset
                 )
             )
 
-            rows_after = len(cleaned_df)
-
-            duplicates_removed = (
-                rows_before - rows_after
-            )
-
-            job.rows_before = rows_before
-
-            job.rows_after = rows_after
-
-            job.duplicates_removed = (
-                duplicates_removed
-            )
-
-            output_filename = (
-                f"{dataset.id}_cleaned.csv"
-            )
-
-            output_path = (
-                f"/tmp/{output_filename}"
-            )
-
-            cleaned_df.to_csv(
-                output_path,
-                index=False
-            )
-
-            with open(
-                output_path,
-                "rb"
-            ) as cleaned_file:
+            with open(output_path, "rb") as cleaned_file:
 
                 job.cleaned_file.save(
                     output_filename,
@@ -141,24 +155,24 @@ class CleaningService:
                     save=False
                 )
 
+            job.rows_before = (
+                duplicate_summary["rows_before"]
+            )
+
+            job.rows_after = (
+                duplicate_summary["rows_after"]
+            )
+
+            job.duplicates_removed = (
+                duplicate_summary["duplicates_removed"]
+            )
+
             job.cleaning_summary = {
-
-                "duplicates_removed":
-                    duplicates_removed,
-
-                "rows_before":
-                    rows_before,
-
-                "rows_after":
-                    rows_after,
-                
-                "missing_values_filled":
-                    missing_filled,
+                **duplicate_summary,
+                **missing_summary,
             }
 
-            job.status = (
-                CleaningStatus.COMPLETED
-            )
+            job.status = CleaningStatus.COMPLETED
 
             job.save()
 
@@ -168,10 +182,6 @@ class CleaningService:
 
         except Exception:
 
-            job.status = (
-                CleaningStatus.FAILED
-            )
-
+            job.status = CleaningStatus.FAILED
             job.save()
-
             raise
