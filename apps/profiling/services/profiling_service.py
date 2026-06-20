@@ -2,6 +2,9 @@ import pandas as pd
 
 from apps.datasets.models import Dataset
 from apps.profiling.models import DatasetProfile
+from apps.core.services.data_preprocessing import (
+    DataPreprocessingService
+)
 
 
 class ProfilingService:
@@ -32,6 +35,7 @@ class ProfilingService:
             dataset.save()
 
             df = ProfilingService.load_dataframe(dataset)
+            df = DataPreprocessingService.preprocess_dataframe(df)
 
             profile_data = {
 

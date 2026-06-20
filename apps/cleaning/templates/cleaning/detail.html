@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cleaning Results</title>
+</head>
+<body>
+
+<h1>Cleaning Results</h1>
+
+<hr>
+
+<p>
+Status:
+{{ job.status }}
+</p>
+
+<p>
+Rows Before:
+{{ job.rows_before }}
+</p>
+
+<p>
+Rows After:
+{{ job.rows_after }}
+</p>
+
+<p>
+Duplicates Removed:
+{{ job.duplicates_removed }}
+</p>
+
+<p>
+Missing Values Filled:
+{{ job.cleaning_summary.missing_values_filled }}
+</p>
+
+<hr>
+
+{% if job.cleaned_file %}
+
+<a href="{{ job.cleaned_file.url }}">
+    Download Cleaned Dataset
+</a>
+
+{% endif %}
+
+<hr>
+
+<a href="{% url 'datasets:list' %}">
+    Back to Datasets
+</a>
+
+</body>
+</html>

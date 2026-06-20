@@ -35,6 +35,13 @@ urlpatterns = [
             "apps.datasets.urls"
         ),
     ),
+    
+    path(
+        "cleaning/",
+        include(
+            "apps.cleaning.urls"
+        ),
+    ),
 ]
 
 if settings.DEBUG:

@@ -3,11 +3,15 @@ import os
 import pandas as pd
 
 from django.core.files import File
+import pandas.api.types as ptypes
 
 from apps.datasets.models import Dataset
 from apps.cleaning.models import (
     CleaningJob,
     CleaningStatus,
+)
+from apps.core.services.data_preprocessing import (
+    DataPreprocessingService
 )
 
 class CleaningService:
@@ -26,7 +30,45 @@ class CleaningService:
         raise ValueError(
             f"Unsupported file type: {dataset.file_type}"
         )
+
     
+    @staticmethod
+    def handle_missing_values(df):
+
+        missing_before = int(
+            df.isnull().sum().sum()
+        )
+
+        for column in df.columns:
+
+            if ptypes.is_numeric_dtype(df[column]):
+
+                median_value = (
+                    df[column].median()
+                )
+
+                df[column] = (
+                    df[column]
+                    .fillna(median_value)
+                )
+
+            else:
+
+                df[column] = (
+                    df[column]
+                    .fillna("Unknown")
+                )
+
+        missing_after = int(
+            df.isnull().sum().sum()
+        )
+
+        filled_values = (
+            missing_before - missing_after
+        )
+
+        return df, filled_values
+
 
     @staticmethod
     def remove_duplicates(
@@ -46,10 +88,19 @@ class CleaningService:
                 )
             )
 
+            df = (
+                DataPreprocessingService
+                .preprocess_dataframe(df)
+            )
+
             rows_before = len(df)
 
-            cleaned_df = (
-                df.drop_duplicates()
+            cleaned_df = df.drop_duplicates()
+
+            cleaned_df, missing_filled = (
+                CleaningService.handle_missing_values(
+                    cleaned_df
+                )
             )
 
             rows_after = len(cleaned_df)
@@ -100,6 +151,9 @@ class CleaningService:
 
                 "rows_after":
                     rows_after,
+                
+                "missing_values_filled":
+                    missing_filled,
             }
 
             job.status = (
