@@ -8,6 +8,9 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import TemplateView
 
 from apps.profiling.models import DatasetProfile
+from apps.cleaning.services.recommendation_service import (
+    RecommendationService
+)
 from .forms import DatasetUploadForm
 from .models import Dataset
 
@@ -75,6 +78,12 @@ class DatasetProfileView(
             Dataset,
             id=self.kwargs["dataset_id"],
             user=self.request.user
+        )
+
+        context["recommendations"] = (
+            RecommendationService.generate_recommendations(
+                dataset
+            )
         )
 
         profile = getattr(

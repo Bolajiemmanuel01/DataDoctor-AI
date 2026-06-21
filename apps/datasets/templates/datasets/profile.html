@@ -147,6 +147,31 @@ Duplicate Rows:
 
 <hr>
 
+<h2>AI Recommendations</h2>
+{% if recommendations %}
+<ul>
+    {% for action, recommendation in recommendations.items %}
+        <li>
+            <strong>{{ action }}</strong><br>
+            Reason: {{ recommendation.reason }}
+
+            {% if recommendation.columns %}
+                <br>
+                Columns:
+                <ul>
+                    {% for column in recommendation.columns %}
+                        <li>{{ column }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </li>
+        <br>
+    {% endfor %}
+</ul>
+{% else %}
+<p>No recommendations available.</p>
+{% endif %}
+
 <a href="{% url 'datasets:list' %}">
     Back to Datasets
 </a>
