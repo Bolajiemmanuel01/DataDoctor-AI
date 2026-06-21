@@ -144,7 +144,97 @@ class CleaningService:
         }
 
         return df, summary
+    
 
+    @staticmethod
+    def standardize_dates(df, columns, day_first=True):
+
+        standardized_columns = []
+
+        failed_columns = []
+
+        for column in columns:
+
+            if column in df.columns:
+
+                try:
+
+                    df[column] = pd.to_datetime(
+                        df[column],
+                        errors="coerce",
+                        dayfirst=day_first
+                    )
+
+                    df[column] = (
+                        df[column]
+                        .dt.strftime("%Y-%m-%d")
+                    )
+
+                    standardized_columns.append(column)
+
+                except Exception:
+
+                    failed_columns.append(column)
+
+        summary = {
+            "date_standardized": True,
+            "standardized_date_columns": standardized_columns,
+            "failed_date_columns": failed_columns,
+        }
+
+        return df, summary
+
+    @staticmethod
+    def fix_data_types(df, columns):
+
+        converted_columns = {}
+        failed_columns = []
+
+        for column in columns:
+
+            if column in df.columns:
+
+                try:
+
+                    # Convert values to numeric
+                    numeric_series = pd.to_numeric(
+                        df[column],
+                        errors="coerce"
+                    )
+
+                    # Remove nulls for validation
+                    non_null = numeric_series.dropna()
+
+                    # Skip if entire column failed conversion
+                    if len(non_null) == 0:
+                        failed_columns.append(column)
+                        continue
+
+                    # Check whether all values are whole numbers
+                    if (non_null % 1 == 0).all():
+
+                        # Nullable integer type supports missing values
+                        df[column] = numeric_series.astype("Int64")
+
+                        converted_columns[column] = "integer"
+
+                    else:
+
+                        df[column] = numeric_series.astype(float)
+
+                        converted_columns[column] = "float"
+
+                except Exception:
+
+                    failed_columns.append(column)
+
+        summary = {
+            "data_types_corrected": True,
+            "converted_columns": converted_columns,
+            "failed_columns": failed_columns,
+        }
+
+        return df, summary
 
     @staticmethod
     def run_cleaning(dataset):
