@@ -24,9 +24,15 @@ class RunCleaningView(
             user=self.request.user
         )
 
+        default_config = {
+            "remove_duplicates": True,
+            "handle_missing_values": True,
+        }
+
         job = (
             CleaningService.run_cleaning(
-                dataset
+                dataset,
+                default_config
             )
         )
 

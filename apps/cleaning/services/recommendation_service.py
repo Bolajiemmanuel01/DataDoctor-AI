@@ -1,6 +1,3 @@
-from apps.datasets.apps import DatasetsConfig
-
-
 class RecommendationService:
 
     @staticmethod
@@ -14,6 +11,7 @@ class RecommendationService:
 
             recommendations["remove_duplicates"] = {
                 "recommended": True,
+                "default_selected": True,
                 "reason": (
                     f"{profile.duplicate_rows} duplicate rows detected."
                 )
@@ -28,6 +26,7 @@ class RecommendationService:
 
             recommendations["handle_missing_values"] = {
                 "recommended": True,
+                "default_selected": True,
                 "reason": (
                     f"Missing values found in "
                     f"{len(missing_columns)} columns."
@@ -56,6 +55,7 @@ class RecommendationService:
 
             recommendations["standardize_text"] = {
                 "recommended": True,
+                "default_selected": False,
                 "reason": (
                     "Potential inconsistent text formatting detected."
                 ),
@@ -73,10 +73,12 @@ class RecommendationService:
 
             recommendations["standardize_dates"] = {
                 "recommended": True,
+                "default_selected": False,
                 "reason": (
                     "Potential date columns detected."
                 ),
-                "columns": date_columns
+                "columns": date_columns,
+                "day_first": True
             }
         
         numeric_keywords = [
@@ -87,6 +89,15 @@ class RecommendationService:
             "sales",
             "age",
             "quantity",
+            "profit",
+            "discount",
+            "total",
+            "balance",
+            "income",
+            "expense",
+            "salary",
+            "score",
+            "rating",
         ]
         candidate_numeric_columns = []
 
@@ -103,6 +114,7 @@ class RecommendationService:
 
             recommendations["fix_data_types"] = {
                 "recommended": True,
+                "default_selected": False,
                 "reason": (
                     "Numeric columns stored as text detected."
                 ),

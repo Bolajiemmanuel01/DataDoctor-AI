@@ -237,7 +237,9 @@ class CleaningService:
         return df, summary
 
     @staticmethod
-    def run_cleaning(dataset):
+    def run_cleaning(dataset, config):
+
+        cleaning_summary = {}
 
         job = CleaningJob.objects.create(
             dataset=dataset,
@@ -253,13 +255,57 @@ class CleaningService:
                 .preprocess_dataframe(df)
             )
 
-            df, duplicate_summary = (
-                CleaningService.remove_duplicates(df)
-            )
+            if config.get("remove_duplicates"):
+                df, duplicate_summary = (
+                    CleaningService.remove_duplicates(df)
+                )
 
-            df, missing_summary = (
-                CleaningService.handle_missing_values(df)
-            )
+                cleaning_summary.update(duplicate_summary)
+
+            if config.get("handle_missing_values"):
+                df, missing_summary = (
+                    CleaningService.handle_missing_values(df)
+                )
+
+                cleaning_summary.update(missing_summary)
+
+            text_config = config.get("standardize_text", {})
+            if text_config.get("enabled"):
+                df, text_summary = (
+                    CleaningService.standardize_text(
+                        df,
+                        text_config.get("columns", [])
+                    )
+                )
+
+                cleaning_summary.update(text_summary)
+            
+            date_config = config.get("standardize_dates", {})
+            if date_config.get("enabled"):
+                df, date_summary = (
+                    CleaningService.standardize_dates(
+                        df,
+                        date_config.get("columns", []),
+                        day_first=date_config.get(
+                            "day_first",
+                            True
+                        )
+                    )
+                )
+
+                cleaning_summary.update(date_summary)
+            
+            datatype_config = config.get("fix_data_types", {})
+            if datatype_config.get("enabled"):
+
+                df, datatype_summary = (
+                    CleaningService.fix_data_types(
+                        df,
+                        datatype_config.get("columns", [])
+                    )
+                )
+
+                cleaning_summary.update(datatype_summary)
 
             output_filename, output_path = (
                 CleaningService.export_cleaned_file(
@@ -276,22 +322,22 @@ class CleaningService:
                     save=False
                 )
 
-            job.rows_before = (
-                duplicate_summary["rows_before"]
+            job.rows_before = cleaning_summary.get(
+                "rows_before",
+                len(df)
             )
 
-            job.rows_after = (
-                duplicate_summary["rows_after"]
+            job.rows_after = cleaning_summary.get(
+                "rows_after",
+                len(df)
             )
 
-            job.duplicates_removed = (
-                duplicate_summary["duplicates_removed"]
+            job.duplicates_removed = cleaning_summary.get(
+                "duplicates_removed",
+                0
             )
 
-            job.cleaning_summary = {
-                **duplicate_summary,
-                **missing_summary,
-            }
+            job.cleaning_summary = cleaning_summary
 
             job.status = CleaningStatus.COMPLETED
 
