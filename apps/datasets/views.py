@@ -11,6 +11,7 @@ from apps.profiling.models import DatasetProfile
 from apps.cleaning.services.recommendation_service import (
     RecommendationService
 )
+from apps.cleaning.forms import CleaningConfigForm
 from .forms import DatasetUploadForm
 from .models import Dataset
 
@@ -80,10 +81,16 @@ class DatasetProfileView(
             user=self.request.user
         )
 
-        context["recommendations"] = (
+        recommendations = (
             RecommendationService.generate_recommendations(
                 dataset
             )
+        )
+
+        context["recommendations"] = recommendations
+
+        context["cleaning_form"] = CleaningConfigForm(
+            recommendations=recommendations
         )
 
         profile = getattr(

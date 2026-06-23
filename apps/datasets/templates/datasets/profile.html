@@ -172,6 +172,15 @@ Duplicate Rows:
 <p>No recommendations available.</p>
 {% endif %}
 
+<h2>Cleaning Configuration</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ cleaning_form.as_p }}
+    <button type="submit">
+        Run Selected Cleaning
+    </button>
+</form>
+
 <a href="{% url 'datasets:list' %}">
     Back to Datasets
 </a>
