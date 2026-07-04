@@ -11,6 +11,10 @@ from apps.profiling.models import DatasetProfile
 from apps.cleaning.services.recommendation_service import (
     RecommendationService
 )
+from django.shortcuts import redirect
+from apps.cleaning.services.cleaning_service import (
+    CleaningService
+)
 from apps.cleaning.forms import CleaningConfigForm
 from .forms import DatasetUploadForm
 from .models import Dataset
@@ -103,3 +107,42 @@ class DatasetProfileView(
         context["profile"] = profile
 
         return context
+    
+    def post(self, request, *args, **kwargs):
+
+        dataset = get_object_or_404(
+            Dataset,
+            id=self.kwargs["dataset_id"],
+            user=request.user
+        )
+
+        recommendations = (
+            RecommendationService.generate_recommendations(
+                dataset
+            )
+        )
+
+        form = CleaningConfigForm(
+            request.POST,
+            recommendations=recommendations
+        )
+
+        if form.is_valid():
+
+            config = form.build_cleaning_config()
+
+            job = CleaningService.run_cleaning(
+                dataset,
+                config
+            )
+
+            return redirect(
+                "cleaning:job_detail",
+                job_id=job.id
+            )
+
+        context = self.get_context_data(**kwargs)
+
+        context["cleaning_form"] = form
+
+        return self.render_to_response(context)

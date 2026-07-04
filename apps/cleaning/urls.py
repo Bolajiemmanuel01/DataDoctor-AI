@@ -20,4 +20,10 @@ urlpatterns = [
         CleaningJobDetailView.as_view(),
         name="detail",
     ),
+
+    path(
+        "job/<uuid:job_id>/",
+        CleaningJobDetailView.as_view(),
+        name="job_detail",
+    ),
 ]

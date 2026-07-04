@@ -13,6 +13,32 @@ from apps.cleaning.models import (
 from apps.core.services.data_preprocessing import (
     DataPreprocessingService
 )
+from datetime import datetime
+
+
+def parse_date(value, day_first=True):
+
+    if pd.isna(value):
+        return pd.NA
+
+    value = str(value).strip()
+
+    formats = [
+        "%d/%m/%Y",
+        "%m/%d/%Y",
+        "%m-%d-%Y",
+        "%d-%m-%Y",
+        "%Y-%m-%d",
+    ]
+
+    for fmt in formats:
+        try:
+            parsed = datetime.strptime(value, fmt)
+            return parsed.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+
+    return pd.NA
 
 class CleaningService:
 
@@ -159,16 +185,7 @@ class CleaningService:
 
                 try:
 
-                    df[column] = pd.to_datetime(
-                        df[column],
-                        errors="coerce",
-                        dayfirst=day_first
-                    )
-
-                    df[column] = (
-                        df[column]
-                        .dt.strftime("%Y-%m-%d")
-                    )
+                    df[column] = df[column].apply(parse_date)
 
                     standardized_columns.append(column)
 
