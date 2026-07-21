@@ -17,8 +17,10 @@ class CleaningJobDetailView(LoginRequiredMixin, DetailView):
     pk_url_kwarg = "job_id"
 
     def get_queryset(self):
-        return CleaningJob.objects.select_related("dataset").filter(
-            dataset__user=self.request.user
+        return (
+            CleaningJob.objects.select_related("dataset")
+            .filter(dataset__user=self.request.user)
+            .order_by("-created_at")
         )
 
 
@@ -29,8 +31,10 @@ class CleaningHistoryListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return CleaningJob.objects.select_related("dataset").filter(
-            dataset__user=self.request.user
+        return (
+            CleaningJob.objects.select_related("dataset")
+            .filter(dataset__user=self.request.user)
+            .order_by("-created_at")
         )
 
 

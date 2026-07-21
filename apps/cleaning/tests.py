@@ -1,13 +1,16 @@
 import shutil
 import tempfile
+from datetime import timedelta
 
 import pandas as pd
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.cleaning.forms import CleaningConfigForm
+from apps.cleaning.models import CleaningJob, CleaningStatus
 from apps.cleaning.services.cleaning_service import (
     CleaningService,
     parse_date,
@@ -178,3 +181,24 @@ class CleaningWorkflowTests(TestCase):
 
         self.assertEqual(detail_response.status_code, 404)
         self.assertEqual(download_response.status_code, 404)
+
+    def test_history_shows_newest_cleaning_jobs_first(self):
+        older_job = CleaningJob.objects.create(
+            dataset=self.dataset,
+            status=CleaningStatus.COMPLETED,
+        )
+        newer_job = CleaningJob.objects.create(
+            dataset=self.dataset,
+            status=CleaningStatus.COMPLETED,
+        )
+        now = timezone.now()
+        CleaningJob.objects.filter(id=older_job.id).update(
+            created_at=now - timedelta(days=1)
+        )
+        CleaningJob.objects.filter(id=newer_job.id).update(created_at=now)
+
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("cleaning:history"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["jobs"][0].id, newer_job.id)
