@@ -18,42 +18,29 @@ class CleaningStatus(models.TextChoices):
 class CleaningJob(BaseModel):
 
     dataset = models.ForeignKey(
-        Dataset,
-        on_delete=models.CASCADE,
-        related_name="cleaning_jobs"
+        Dataset, on_delete=models.CASCADE, related_name="cleaning_jobs"
     )
 
     status = models.CharField(
-        max_length=20,
-        choices=CleaningStatus.choices,
-        default=CleaningStatus.PENDING
+        max_length=20, choices=CleaningStatus.choices, default=CleaningStatus.PENDING
     )
 
-    rows_before = models.IntegerField(
-        default=0
-    )
+    rows_before = models.IntegerField(default=0)
 
-    rows_after = models.IntegerField(
-        default=0
-    )
+    rows_after = models.IntegerField(default=0)
 
-    duplicates_removed = models.IntegerField(
-        default=0
-    )
+    duplicates_removed = models.IntegerField(default=0)
 
-    cleaned_file = models.FileField(
-        upload_to="cleaned/",
-        blank=True,
-        null=True
-    )
+    cleaned_file = models.FileField(upload_to="cleaned/", blank=True, null=True)
 
-    cleaning_summary = models.JSONField(
-        default=dict
-    )
+    cleaned_csv_file = models.FileField(upload_to="cleaned/", blank=True, null=True)
+
+    cleaned_xlsx_file = models.FileField(upload_to="cleaned/", blank=True, null=True)
+
+    selected_actions = models.JSONField(default=dict)
+
+    cleaning_summary = models.JSONField(default=dict)
 
     def __str__(self):
 
-        return (
-            f"Cleaning Job - "
-            f"{self.dataset.name}"
-        )
+        return f"Cleaning Job - " f"{self.dataset.name}"

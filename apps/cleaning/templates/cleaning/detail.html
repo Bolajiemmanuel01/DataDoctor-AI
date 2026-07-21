@@ -36,12 +36,41 @@ Missing Values Filled:
 
 <hr>
 
-{% if job.cleaned_file %}
+{% if job.cleaned_csv_file or job.cleaned_file %}
 
-<a href="{{ job.cleaned_file.url }}">
-    Download Cleaned Dataset
+<a href="{% url 'cleaning:download' job.id 'csv' %}">
+    Download Cleaned CSV
 </a>
 
+{% endif %}
+
+{% if job.cleaned_xlsx_file %}
+<br>
+
+<a href="{% url 'cleaning:download' job.id 'xlsx' %}">
+    Download Cleaned Excel
+</a>
+
+{% endif %}
+
+{% if job.cleaning_summary.date_parsing_statistics %}
+<h2>Date Parsing Results</h2>
+<table border="1">
+    <tr>
+        <th>Column</th>
+        <th>Processed</th>
+        <th>Parsed</th>
+        <th>Invalid Values Preserved</th>
+    </tr>
+    {% for column, statistics in job.cleaning_summary.date_parsing_statistics.items %}
+    <tr>
+        <td>{{ column }}</td>
+        <td>{{ statistics.values_processed }}</td>
+        <td>{{ statistics.values_parsed }}</td>
+        <td>{{ statistics.invalid_values_preserved }}</td>
+    </tr>
+    {% endfor %}
+</table>
 {% endif %}
 
 <hr>

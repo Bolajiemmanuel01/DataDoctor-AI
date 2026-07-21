@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cleaning History</title>
+</head>
+<body>
+
+<h1>Cleaning History</h1>
+
+<ul>
+{% for job in jobs %}
+    <li>
+        <strong>{{ job.dataset.name }}</strong>
+        — {{ job.status }}
+        — {{ job.created_at }}
+        <a href="{% url 'cleaning:job_detail' job.id %}">View result</a>
+    </li>
+{% empty %}
+    <li>No cleaning jobs have been run yet.</li>
+{% endfor %}
+</ul>
+
+<a href="{% url 'datasets:list' %}">Back to Datasets</a>
+
+</body>
+</html>
