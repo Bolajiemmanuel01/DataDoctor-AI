@@ -37,3 +37,9 @@ htmlcov/
 
 # Docker
 postgres_data/
+
+# AI Documentation
+docs/12_Project_Handover_For_Codex.md
+docs/13_Codex_Development_Guide.md
+docs/14_Project_Context_For_AI_Assistants.md
+docs/15_Development_Roadmap.md
