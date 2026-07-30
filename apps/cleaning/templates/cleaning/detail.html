@@ -1,83 +1,83 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Cleaning Results</title>
-</head>
-<body>
+{% extends 'base.html' %}
 
-<h1>Cleaning Results</h1>
+{% block title %}Cleaning Results{% endblock %}
 
-<hr>
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-4">
+            <div>
+                <h1 class="card-title">Cleaning Results</h1>
+                <p class="text-muted">Summary for cleaning job {{ job.id }}</p>
+            </div>
+            <a class="btn btn-outline-secondary" href="{% url 'cleaning:history' %}">Back to history</a>
+        </div>
 
-<p>
-Status:
-{{ job.status }}
-</p>
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="p-3 bg-light rounded text-center">
+                    <h5>Status</h5>
+                    <span class="badge bg-info text-dark">{{ job.status }}</span>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="p-3 bg-light rounded text-center">
+                    <h5>Rows before</h5>
+                    <p class="mb-0">{{ job.rows_before }}</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="p-3 bg-light rounded text-center">
+                    <h5>Rows after</h5>
+                    <p class="mb-0">{{ job.rows_after }}</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-3">
+                <div class="p-3 bg-light rounded text-center">
+                    <h5>Duplicates removed</h5>
+                    <p class="mb-0">{{ job.duplicates_removed }}</p>
+                </div>
+            </div>
+        </div>
 
-<p>
-Rows Before:
-{{ job.rows_before }}
-</p>
+        <div class="mb-4">
+            {% if job.cleaned_csv_file or job.cleaned_xlsx_file %}
+                <div class="btn-group" role="group" aria-label="Cleaned files">
+                    {% if job.cleaned_csv_file %}
+                        <a class="btn btn-primary" href="{% url 'cleaning:download' job.id 'csv' %}">Download CSV</a>
+                    {% endif %}
+                    {% if job.cleaned_xlsx_file %}
+                        <a class="btn btn-secondary" href="{% url 'cleaning:download' job.id 'xlsx' %}">Download Excel</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
 
-<p>
-Rows After:
-{{ job.rows_after }}
-</p>
-
-<p>
-Duplicates Removed:
-{{ job.duplicates_removed }}
-</p>
-
-<p>
-Missing Values Filled:
-{{ job.cleaning_summary.missing_values_filled }}
-</p>
-
-<hr>
-
-{% if job.cleaned_csv_file or job.cleaned_file %}
-
-<a href="{% url 'cleaning:download' job.id 'csv' %}">
-    Download Cleaned CSV
-</a>
-
-{% endif %}
-
-{% if job.cleaned_xlsx_file %}
-<br>
-
-<a href="{% url 'cleaning:download' job.id 'xlsx' %}">
-    Download Cleaned Excel
-</a>
-
-{% endif %}
-
-{% if job.cleaning_summary.date_parsing_statistics %}
-<h2>Date Parsing Results</h2>
-<table border="1">
-    <tr>
-        <th>Column</th>
-        <th>Processed</th>
-        <th>Parsed</th>
-        <th>Invalid Values Preserved</th>
-    </tr>
-    {% for column, statistics in job.cleaning_summary.date_parsing_statistics.items %}
-    <tr>
-        <td>{{ column }}</td>
-        <td>{{ statistics.values_processed }}</td>
-        <td>{{ statistics.values_parsed }}</td>
-        <td>{{ statistics.invalid_values_preserved }}</td>
-    </tr>
-    {% endfor %}
-</table>
-{% endif %}
-
-<hr>
-
-<a href="{% url 'datasets:list' %}">
-    Back to Datasets
-</a>
-
-</body>
-</html>
+        {% if job.cleaning_summary.date_parsing_statistics %}
+            <div class="table-responsive">
+                <h2>Date parsing results</h2>
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Processed</th>
+                            <th>Parsed</th>
+                            <th>Invalid preserved</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for column, statistics in job.cleaning_summary.date_parsing_statistics.items %}
+                            <tr>
+                                <td>{{ column }}</td>
+                                <td>{{ statistics.values_processed }}</td>
+                                <td>{{ statistics.values_parsed }}</td>
+                                <td>{{ statistics.invalid_values_preserved }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

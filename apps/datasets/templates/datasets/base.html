@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} - DataDoctor AI{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h1 class="card-title">{{ title }}</h1>
+                {% block page_content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

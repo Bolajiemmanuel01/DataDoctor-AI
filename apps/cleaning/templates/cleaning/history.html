@@ -1,26 +1,30 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Cleaning History</title>
-</head>
-<body>
+{% extends 'base.html' %}
 
-<h1>Cleaning History</h1>
+{% block title %}Cleaning History{% endblock %}
 
-<ul>
-{% for job in jobs %}
-    <li>
-        <strong>{{ job.dataset.name }}</strong>
-        — {{ job.status }}
-        — {{ job.created_at }}
-        <a href="{% url 'cleaning:job_detail' job.id %}">View result</a>
-    </li>
-{% empty %}
-    <li>No cleaning jobs have been run yet.</li>
-{% endfor %}
-</ul>
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1>Cleaning History</h1>
+        <p class="text-muted">Review completed and in-progress cleaning jobs.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="{% url 'datasets:list' %}">My Datasets</a>
+</div>
 
-<a href="{% url 'datasets:list' %}">Back to Datasets</a>
-
-</body>
-</html>
+{% if jobs %}
+    <div class="list-group">
+        {% for job in jobs %}
+            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1">{{ job.dataset.name }}</h5>
+                    <p class="mb-1 text-muted">Started {{ job.created_at|date:'Y-m-d H:i' }}</p>
+                    <small>Status: <span class="badge bg-secondary">{{ job.status }}</span></small>
+                </div>
+                <a class="btn btn-sm btn-primary" href="{% url 'cleaning:job_detail' job.id %}">View result</a>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-info">No cleaning jobs have been created yet.</div>
+{% endif %}
+{% endblock %}

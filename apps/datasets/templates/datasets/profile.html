@@ -1,189 +1,92 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dataset Profile</title>
-</head>
-<body>
+{% extends 'base.html' %}
 
-<h2>Dataset Information</h2>
+{% block title %}{{ dataset.name }}{% endblock %}
 
-{% if dataset.status == "PROFILED" %}
+{% block content %}
+<div class="row gy-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title">Dataset details</h2>
+                <dl class="row">
+                    <dt class="col-sm-5">Name</dt>
+                    <dd class="col-sm-7">{{ dataset.name }}</dd>
 
-<p>
-✅ Dataset successfully profiled
-</p>
+                    <dt class="col-sm-5">Type</dt>
+                    <dd class="col-sm-7">{{ dataset.file_type }}</dd>
 
-{% endif %}
+                    <dt class="col-sm-5">Size</dt>
+                    <dd class="col-sm-7">{{ dataset.file_size }}</dd>
 
-<hr>
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7"><span class="badge bg-info text-dark">{{ dataset.status }}</span></dd>
 
-<a href="{% url 'cleaning:history' %}">
-    View Cleaning History
-</a>
+                    <dt class="col-sm-5">Created</dt>
+                    <dd class="col-sm-7">{{ dataset.created_at|date:'Y-m-d H:i' }}</dd>
+                </dl>
+                <a class="btn btn-outline-secondary" href="{% url 'datasets:list' %}">Back to datasets</a>
+            </div>
+        </div>
+    </div>
 
-<hr>
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="card-title">Summary statistics</h2>
+                <div class="row">
+                    <div class="col-sm-4 mb-3">
+                        <div class="p-3 bg-light rounded text-center">
+                            <h3>{{ profile.row_count }}</h3>
+                            <p class="mb-0">Rows</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 mb-3">
+                        <div class="p-3 bg-light rounded text-center">
+                            <h3>{{ profile.column_count }}</h3>
+                            <p class="mb-0">Columns</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 mb-3">
+                        <div class="p-3 bg-light rounded text-center">
+                            <h3>{{ profile.duplicate_rows }}</h3>
+                            <p class="mb-0">Duplicate rows</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<table border="1">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <h2 class="card-title">AI Recommendations</h2>
+                {% if recommendations %}
+                    <ul class="list-group list-group-flush">
+                        {% for action, recommendation in recommendations.items %}
+                            <li class="list-group-item">
+                                <h5>{{ action }}</h5>
+                                <p>{{ recommendation.reason }}</p>
+                                {% if recommendation.columns %}
+                                    <small>Columns: {{ recommendation.columns|join:", " }}</small>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="alert alert-secondary">No recommendations available right now.</div>
+                {% endif %}
+            </div>
+        </div>
 
-<tr>
-    <td>Name</td>
-    <td>{{ dataset.name }}</td>
-</tr>
-
-<tr>
-    <td>File Type</td>
-    <td>{{ dataset.file_type }}</td>
-</tr>
-
-<tr>
-    <td>File Size</td>
-    <td>{{ dataset.file_size }}</td>
-</tr>
-
-<tr>
-    <td>Status</td>
-    <td>{{ dataset.status }}</td>
-</tr>
-
-<tr>
-    <td>Created</td>
-    <td>{{ dataset.created_at }}</td>
-</tr>
-
-</table>
-
-<h2>Summary Statistics</h2>
-
-<ul>
-
-<li>
-Rows:
-{{ profile.row_count }}
-</li>
-
-<li>
-Columns:
-{{ profile.column_count }}
-</li>
-
-<li>
-Duplicate Rows:
-{{ profile.duplicate_rows }}
-</li>
-
-</ul>
-
-<h2>Columns</h2>
-
-<ul>
-
-{% for column in profile.column_names %}
-
-<li>{{ column }}</li>
-
-{% endfor %}
-
-</ul>
-
-<h2>Missing Values</h2>
-
-<table border="1">
-
-<tr>
-    <th>Column</th>
-    <th>Missing Count</th>
-</tr>
-
-{% for column, count in profile.missing_values.items %}
-
-<tr>
-    <td>{{ column }}</td>
-    <td>{{ count }}</td>
-</tr>
-
-{% endfor %}
-
-</table>
-
-<h2>Data Types</h2>
-
-<table border="1">
-
-<tr>
-    <th>Column</th>
-    <th>Type</th>
-</tr>
-
-{% for column, dtype in profile.data_type_summary.items %}
-
-<tr>
-    <td>{{ column }}</td>
-    <td>{{ dtype }}</td>
-</tr>
-
-{% endfor %}
-
-</table>
-
-<h2>Unique Values</h2>
-
-<table border="1">
-
-<tr>
-    <th>Column</th>
-    <th>Unique Count</th>
-</tr>
-
-{% for column, count in profile.unique_value_summary.items %}
-
-<tr>
-    <td>{{ column }}</td>
-    <td>{{ count }}</td>
-</tr>
-
-{% endfor %}
-
-</table>
-
-<hr>
-
-<h2>AI Recommendations</h2>
-{% if recommendations %}
-<ul>
-    {% for action, recommendation in recommendations.items %}
-        <li>
-            <strong>{{ action }}</strong><br>
-            Reason: {{ recommendation.reason }}
-
-            {% if recommendation.columns %}
-                <br>
-                Columns:
-                <ul>
-                    {% for column in recommendation.columns %}
-                        <li>{{ column }}</li>
-                    {% endfor %}
-                </ul>
-            {% endif %}
-        </li>
-        <br>
-    {% endfor %}
-</ul>
-{% else %}
-<p>No recommendations available.</p>
-{% endif %}
-
-<h2>Cleaning Configuration</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ cleaning_form.as_p }}
-    <button type="submit">
-        Run Selected Cleaning
-    </button>
-</form>
-
-<a href="{% url 'datasets:list' %}">
-    Back to Datasets
-</a>
-
-</body>
-</html>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h2 class="card-title">Cleaning configuration</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ cleaning_form.as_p }}
+                    <button type="submit" class="btn btn-primary">Run selected cleaning</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

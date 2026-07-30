@@ -22,6 +22,7 @@ from django.urls import (
 )
 from django.conf import settings
 from django.conf.urls.static import static
+from .health import healthz
 
 urlpatterns = [
     path(
@@ -46,6 +47,7 @@ urlpatterns = [
         "api/v1/",
         include("apps.api.urls"),
     ),
+    path("healthz/", healthz),
 ]
 
 if settings.DEBUG:

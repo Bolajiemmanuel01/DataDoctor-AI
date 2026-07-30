@@ -14,6 +14,8 @@ class CleaningStatus(models.TextChoices):
 
     FAILED = "FAILED", "Failed"
 
+    CANCELLED = "CANCELLED", "Cancelled"
+
 
 class CleaningJob(BaseModel):
 

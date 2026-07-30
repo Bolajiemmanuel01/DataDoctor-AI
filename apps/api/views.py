@@ -101,6 +101,34 @@ class CleaningJobDetailAPIView(View):
         return JsonResponse({"success": True, "job": data})
 
 
+@method_decorator(login_required, name="dispatch")
+class CancelCleaningJobAPIView(View):
+    """Allow owners to cancel a pending or running cleaning job.
+
+    This marks the job as CANCELLED. Long-running workers periodically
+    check this flag and will stop early when set.
+    """
+
+    def post(self, request, job_id):
+
+        job = get_object_or_404(
+            CleaningJob.objects.select_related("dataset"), id=job_id, dataset__user=request.user
+        )
+
+        if job.status in ("COMPLETED", "FAILED", "CANCELLED"):
+            return JsonResponse({"success": False, "error": "Job already finished"}, status=400)
+
+        job.status = "CANCELLED"
+        job.save(update_fields=["status"])
+
+        # Also update dataset status for clarity
+        dataset = job.dataset
+        dataset.status = "CANCELLED"
+        dataset.save(update_fields=["status", "updated_at"])
+
+        return JsonResponse({"success": True, "job_id": str(job.id), "status": job.status})
+
+
 
 @method_decorator(login_required, name="dispatch")
 class DatasetProfileAPIView(View):

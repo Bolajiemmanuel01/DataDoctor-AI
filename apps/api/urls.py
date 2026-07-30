@@ -3,6 +3,10 @@ from django.urls import path
 from .views import (
     CleanDatasetAPIView,
     CleaningJobDetailAPIView,
+    CancelCleaningJobAPIView,
+    DatasetProfileAPIView,
+    RecommendationsAPIView,
+    DatasetDownloadAPIView,
 )
 
 app_name = "api"
@@ -32,5 +36,10 @@ urlpatterns = [
         "cleaning-jobs/<uuid:job_id>/",
         CleaningJobDetailAPIView.as_view(),
         name="cleaning_job_detail",
+    ),
+    path(
+        "cleaning-jobs/<uuid:job_id>/cancel/",
+        CancelCleaningJobAPIView.as_view(),
+        name="cleaning_job_cancel",
     ),
 ]

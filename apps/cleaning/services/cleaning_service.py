@@ -396,13 +396,35 @@ class CleaningService:
 
             df = DataPreprocessingService.preprocess_dataframe(df)
 
+            # Periodic cancellation check: if job was cancelled before work
+            # began, respect that and exit early.
+            job_obj.refresh_from_db()
+            if job_obj.status == CleaningStatus.CANCELLED:
+                dataset_obj.status = "CANCELLED"
+                dataset_obj.save(update_fields=["status", "updated_at"])
+                return
+
             if cfg.get("remove_duplicates"):
                 df, duplicate_summary = CleaningService.remove_duplicates(df)
                 cleaning_summary.update(duplicate_summary)
 
+                job_obj.refresh_from_db()
+                if job_obj.status == CleaningStatus.CANCELLED:
+                    dataset_obj.status = "CANCELLED"
+                    dataset_obj.save(update_fields=["status", "updated_at"])
+                    job_obj.save()
+                    return
+
             if cfg.get("handle_missing_values"):
                 df, missing_summary = CleaningService.handle_missing_values(df)
                 cleaning_summary.update(missing_summary)
+
+                job_obj.refresh_from_db()
+                if job_obj.status == CleaningStatus.CANCELLED:
+                    dataset_obj.status = "CANCELLED"
+                    dataset_obj.save(update_fields=["status", "updated_at"])
+                    job_obj.save()
+                    return
 
             text_config = cfg.get("standardize_text", {})
             if text_config.get("enabled"):
@@ -410,6 +432,13 @@ class CleaningService:
                     df, text_config.get("columns", [])
                 )
                 cleaning_summary.update(text_summary)
+
+                job_obj.refresh_from_db()
+                if job_obj.status == CleaningStatus.CANCELLED:
+                    dataset_obj.status = "CANCELLED"
+                    dataset_obj.save(update_fields=["status", "updated_at"])
+                    job_obj.save()
+                    return
 
             date_config = cfg.get("standardize_dates", {})
             if date_config.get("enabled"):
@@ -421,12 +450,26 @@ class CleaningService:
                 )
                 cleaning_summary.update(date_summary)
 
+                job_obj.refresh_from_db()
+                if job_obj.status == CleaningStatus.CANCELLED:
+                    dataset_obj.status = "CANCELLED"
+                    dataset_obj.save(update_fields=["status", "updated_at"])
+                    job_obj.save()
+                    return
+
             datatype_config = cfg.get("fix_data_types", {})
             if datatype_config.get("enabled"):
                 df, datatype_summary = CleaningService.fix_data_types(
                     df, datatype_config.get("columns", [])
                 )
                 cleaning_summary.update(datatype_summary)
+
+                job_obj.refresh_from_db()
+                if job_obj.status == CleaningStatus.CANCELLED:
+                    dataset_obj.status = "CANCELLED"
+                    dataset_obj.save(update_fields=["status", "updated_at"])
+                    job_obj.save()
+                    return
 
             exported_files = CleaningService.export_cleaned_files(df, dataset_obj)
 
