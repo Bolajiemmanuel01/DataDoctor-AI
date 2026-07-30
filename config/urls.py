@@ -42,6 +42,10 @@ urlpatterns = [
             "apps.cleaning.urls"
         ),
     ),
+    path(
+        "api/v1/",
+        include("apps.api.urls"),
+    ),
 ]
 
 if settings.DEBUG:

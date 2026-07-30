@@ -398,6 +398,74 @@ Directory Structure:
 
 ```text
 media/
+```
+
+---
+
+# 10. POC vs Production Architecture
+
+This section describes the differences between the lightweight POC deployment and a recommended production architecture.
+
+## POC deployment
+
+- Single Django web process (container) handling web requests and background tasks (thread-based worker).
+- Local PostgreSQL (container) for metadata and job records.
+- Local filesystem (`media/`) for uploaded and cleaned artifacts.
+
+Pros: easy to run locally via Docker Compose, low setup friction.
+Cons: limited scalability and resilience, unsuitable for multi-tenant production workloads.
+
+## Production architecture (recommended)
+
+```
+Client
+        |
+        v
+Load Balancer / CDN
+        |
+        v
+Web/API (Django w/ Gunicorn)
+        |
+        +--> Message Broker (Redis/RabbitMQ)
+        |        |
+        |        v
+        |     Worker Pool (Celery/RQ)  <---> Object Storage (S3)
+        |        |
+        |        v
+        +--> PostgreSQL (metadata)
+        |
+        +--> Cache (Redis)
+        |
+        +--> Monitoring / Logging / Tracing
+```
+
+Key production components:
+
+- Message broker & workers: move cleaning execution to external worker processes (Celery or RQ) to process jobs asynchronously and at scale.
+- Object storage: use S3-compatible storage for originals, cleaned artifacts, and reports. Serve downloads via signed URLs.
+- Cache: Redis for caching profiles, recommendation results, and reducing load on DB for frequent reads.
+- Monitoring & observability: Prometheus metrics, Grafana dashboards, structured logging (ELK/Cloud provider), and OpenTelemetry tracing.
+- Security & identity: SSO/SAML/OAuth2 for enterprise identity, RBAC for resource access.
+
+## Migration notes
+
+- Introduce a feature flag (`USE_TASK_QUEUE`) to toggle between the POC thread worker and a queue-backed worker during migration.
+- Implement a storage abstraction so `DEFAULT_FILE_STORAGE` can be switched from local to S3 without changing application code.
+- Add health checks for workers, queue depth monitoring, and alerts for failed jobs.
+
+## Operational considerations
+
+- Scale workers by queue length and job complexity (CPU/memory requirements).
+- Enforce per-tenant quotas for upload sizes and concurrent jobs.
+- Implement cost estimates for processing and show estimates to users for large jobs.
+
+## References
+
+- Async processing details: `docs/async_processing.md`
+- Storage & artifact management: `docs/storage.md`
+- Security considerations: `docs/security_compliance.md`
+- AI recommendations design: `docs/ai_design.md`
+
 
 ├── datasets/
 │

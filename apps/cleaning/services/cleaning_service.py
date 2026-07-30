@@ -13,6 +13,8 @@ from apps.cleaning.models import (
 )
 from apps.core.services.data_preprocessing import DataPreprocessingService
 from datetime import datetime
+import threading
+import traceback
 
 DATE_PARSING_MODES = {
     "auto",
@@ -283,43 +285,198 @@ class CleaningService:
 
     @staticmethod
     def run_cleaning(dataset, config):
+        """Enqueue a cleaning job and return the `CleaningJob` immediately.
 
-        cleaning_summary = {}
+        The actual cleaning work runs in a background thread which updates the
+        job status and artifacts when complete. This keeps the HTTP request
+        non-blocking for long-running jobs while remaining dependency-free
+        (no Celery/RQ required for the MVP).
+        """
 
         job = CleaningJob.objects.create(
             dataset=dataset,
-            status=CleaningStatus.RUNNING,
+            status=CleaningStatus.PENDING,
             selected_actions=config,
         )
 
+        def _worker(job_id, dataset_id, cfg):
+
+            try:
+                job_obj = CleaningJob.objects.get(id=job_id)
+                dataset_obj = Dataset.objects.get(id=dataset_id)
+
+                job_obj.status = CleaningStatus.RUNNING
+                job_obj.save(update_fields=["status"])
+
+                dataset_obj.status = "CLEANING"
+                dataset_obj.save(update_fields=["status", "updated_at"])
+
+                cleaning_summary = {}
+
+                df = CleaningService.load_dataframe(dataset_obj)
+
+                df = DataPreprocessingService.preprocess_dataframe(df)
+
+                if cfg.get("remove_duplicates"):
+                    df, duplicate_summary = CleaningService.remove_duplicates(df)
+                    cleaning_summary.update(duplicate_summary)
+
+                if cfg.get("handle_missing_values"):
+                    df, missing_summary = CleaningService.handle_missing_values(df)
+                    cleaning_summary.update(missing_summary)
+
+                text_config = cfg.get("standardize_text", {})
+                if text_config.get("enabled"):
+                    df, text_summary = CleaningService.standardize_text(
+                        df, text_config.get("columns", [])
+                    )
+                    cleaning_summary.update(text_summary)
+
+                date_config = cfg.get("standardize_dates", {})
+                if date_config.get("enabled"):
+                    df, date_summary = CleaningService.standardize_dates(
+                        df,
+                        date_config.get("columns", []),
+                        parsing_mode=date_config.get("parsing_mode", "auto"),
+                        day_first=date_config.get("day_first", True),
+                    )
+                    cleaning_summary.update(date_summary)
+
+                datatype_config = cfg.get("fix_data_types", {})
+                if datatype_config.get("enabled"):
+                    df, datatype_summary = CleaningService.fix_data_types(
+                        df, datatype_config.get("columns", [])
+                    )
+                    cleaning_summary.update(datatype_summary)
+
+                exported_files = CleaningService.export_cleaned_files(df, dataset_obj)
+
+                csv_filename, csv_path = exported_files["csv"]
+                xlsx_filename, xlsx_path = exported_files["xlsx"]
+
+                with open(csv_path, "rb") as cleaned_csv_file:
+                    job_obj.cleaned_csv_file.save(
+                        csv_filename,
+                        File(cleaned_csv_file),
+                        save=False,
+                    )
+                job_obj.cleaned_file.name = job_obj.cleaned_csv_file.name
+                with open(xlsx_path, "rb") as cleaned_xlsx_file:
+                    job_obj.cleaned_xlsx_file.save(
+                        xlsx_filename,
+                        File(cleaned_xlsx_file),
+                        save=False,
+                    )
+
+                job_obj.rows_before = cleaning_summary.get("rows_before", len(df))
+                job_obj.rows_after = cleaning_summary.get("rows_after", len(df))
+                job_obj.duplicates_removed = cleaning_summary.get(
+                    "duplicates_removed", 0
+                )
+                job_obj.cleaning_summary = cleaning_summary
+                job_obj.status = CleaningStatus.COMPLETED
+                job_obj.save()
+
+                dataset_obj.status = "COMPLETED"
+                dataset_obj.save(update_fields=["status", "updated_at"])
+
+                os.remove(csv_path)
+                os.remove(xlsx_path)
+                os.rmdir(exported_files["directory"])
+
+            except Exception:
+                try:
+                    job_obj.status = CleaningStatus.FAILED
+                    job_obj.save()
+                except Exception:
+                    pass
+                try:
+                    dataset_obj.status = "FAILED"
+                    dataset_obj.save(update_fields=["status", "updated_at"])
+                except Exception:
+                    pass
+                # Log traceback to stdout for developer visibility
+                traceback.print_exc()
+
+        # If task queue is enabled in settings, dispatch a Celery task.
+        from django.conf import settings
+
+        if getattr(settings, "USE_TASK_QUEUE", False):
+            try:
+                from apps.cleaning.tasks import run_cleaning_task
+
+                run_cleaning_task.delay(str(job.id), str(dataset.id), config)
+                return job
+            except Exception:
+                # Fall back to threaded worker if task dispatch fails
+                traceback.print_exc()
+
+        thread = threading.Thread(
+            target=_worker, args=(job.id, dataset.id, config), daemon=True
+        )
+        thread.start()
+
+        return job
+
+    # Expose internal worker for Celery task reuse
+    @staticmethod
+    def _run_cleaning_worker(job_id, dataset_id, cfg):
+        # Reuse the worker implementation above by calling it directly.
+        # This keeps logic in one place but allows Celery to call the function.
+        # For clarity, import the current module and invoke the inner worker.
+        from apps.cleaning.services.cleaning_service import CleaningService as _CS
+
+        # The original worker logic is defined inside run_cleaning; to avoid
+        # duplicating code in multiple places, call run_cleaning with a flag
+        # to force synchronous execution. Implemented here as a minimal shim.
+        # Create a temporary job object to match expectations and run inline.
+
+        # NOTE: For now we reuse the threaded worker by directly executing its
+        # logic; since the code for the worker is defined inside run_cleaning,
+        # we should keep worker logic factored out in future refactors.
+
+        # Simple approach: call run_cleaning and let the function dispatch
+        # the worker synchronously by setting USE_TASK_QUEUE=False. To avoid
+        # infinite recursion, we directly execute the worker logic defined
+        # in the closure above. For brevity, call the closure by reusing
+        # the same module-level implementation: import and call the private
+        # helper if present.
+        # As a pragmatic step, reconstruct the same behavior by copying
+        # the worker steps here (keeps Celery and thread behaviors consistent).
+
         try:
+            # Load required objects and repeat the worker flow
+            job_obj = CleaningJob.objects.get(id=job_id)
+            dataset_obj = Dataset.objects.get(id=dataset_id)
 
-            dataset.status = "CLEANING"
-            dataset.save(update_fields=["status", "updated_at"])
+            job_obj.status = CleaningStatus.RUNNING
+            job_obj.save(update_fields=["status"])
 
-            df = CleaningService.load_dataframe(dataset)
+            dataset_obj.status = "CLEANING"
+            dataset_obj.save(update_fields=["status", "updated_at"])
+
+            cleaning_summary = {}
+
+            df = CleaningService.load_dataframe(dataset_obj)
 
             df = DataPreprocessingService.preprocess_dataframe(df)
 
-            if config.get("remove_duplicates"):
+            if cfg.get("remove_duplicates"):
                 df, duplicate_summary = CleaningService.remove_duplicates(df)
-
                 cleaning_summary.update(duplicate_summary)
 
-            if config.get("handle_missing_values"):
+            if cfg.get("handle_missing_values"):
                 df, missing_summary = CleaningService.handle_missing_values(df)
-
                 cleaning_summary.update(missing_summary)
 
-            text_config = config.get("standardize_text", {})
+            text_config = cfg.get("standardize_text", {})
             if text_config.get("enabled"):
                 df, text_summary = CleaningService.standardize_text(
                     df, text_config.get("columns", [])
                 )
-
                 cleaning_summary.update(text_summary)
 
-            date_config = config.get("standardize_dates", {})
+            date_config = cfg.get("standardize_dates", {})
             if date_config.get("enabled"):
                 df, date_summary = CleaningService.standardize_dates(
                     df,
@@ -327,64 +484,59 @@ class CleaningService:
                     parsing_mode=date_config.get("parsing_mode", "auto"),
                     day_first=date_config.get("day_first", True),
                 )
-
                 cleaning_summary.update(date_summary)
 
-            datatype_config = config.get("fix_data_types", {})
+            datatype_config = cfg.get("fix_data_types", {})
             if datatype_config.get("enabled"):
-
                 df, datatype_summary = CleaningService.fix_data_types(
                     df, datatype_config.get("columns", [])
                 )
-
                 cleaning_summary.update(datatype_summary)
 
-            exported_files = CleaningService.export_cleaned_files(df, dataset)
+            exported_files = CleaningService.export_cleaned_files(df, dataset_obj)
 
             csv_filename, csv_path = exported_files["csv"]
             xlsx_filename, xlsx_path = exported_files["xlsx"]
 
             with open(csv_path, "rb") as cleaned_csv_file:
-                job.cleaned_csv_file.save(
+                job_obj.cleaned_csv_file.save(
                     csv_filename,
                     File(cleaned_csv_file),
                     save=False,
                 )
-            # ``cleaned_file`` is retained for jobs created before Phase 3.
-            # Point it at the CSV artifact instead of storing the same file twice.
-            job.cleaned_file.name = job.cleaned_csv_file.name
+            job_obj.cleaned_file.name = job_obj.cleaned_csv_file.name
             with open(xlsx_path, "rb") as cleaned_xlsx_file:
-                job.cleaned_xlsx_file.save(
+                job_obj.cleaned_xlsx_file.save(
                     xlsx_filename,
                     File(cleaned_xlsx_file),
                     save=False,
                 )
 
-            job.rows_before = cleaning_summary.get("rows_before", len(df))
+            job_obj.rows_before = cleaning_summary.get("rows_before", len(df))
+            job_obj.rows_after = cleaning_summary.get("rows_after", len(df))
+            job_obj.duplicates_removed = cleaning_summary.get(
+                "duplicates_removed", 0
+            )
+            job_obj.cleaning_summary = cleaning_summary
+            job_obj.status = CleaningStatus.COMPLETED
+            job_obj.save()
 
-            job.rows_after = cleaning_summary.get("rows_after", len(df))
-
-            job.duplicates_removed = cleaning_summary.get("duplicates_removed", 0)
-
-            job.cleaning_summary = cleaning_summary
-
-            job.status = CleaningStatus.COMPLETED
-
-            job.save()
-
-            dataset.status = "COMPLETED"
-            dataset.save(update_fields=["status", "updated_at"])
+            dataset_obj.status = "COMPLETED"
+            dataset_obj.save(update_fields=["status", "updated_at"])
 
             os.remove(csv_path)
             os.remove(xlsx_path)
             os.rmdir(exported_files["directory"])
 
-            return job
-
         except Exception:
-
-            job.status = CleaningStatus.FAILED
-            job.save()
-            dataset.status = "FAILED"
-            dataset.save(update_fields=["status", "updated_at"])
-            raise
+            try:
+                job_obj.status = CleaningStatus.FAILED
+                job_obj.save()
+            except Exception:
+                pass
+            try:
+                dataset_obj.status = "FAILED"
+                dataset_obj.save(update_fields=["status", "updated_at"])
+            except Exception:
+                pass
+            traceback.print_exc()

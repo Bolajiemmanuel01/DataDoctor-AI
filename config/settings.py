@@ -146,3 +146,10 @@ MEDIA_ROOT = BASE_DIR / "media"
 LOGIN_URL = "/admin/login/"
 
 LOGIN_REDIRECT_URL = "/datasets/"
+
+# Task queue configuration (POC: disabled by default)
+USE_TASK_QUEUE = os.getenv("USE_TASK_QUEUE", "False") == "True"
+
+# Celery (or other broker) configuration - optional for POC
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
