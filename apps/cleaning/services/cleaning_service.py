@@ -299,106 +299,7 @@ class CleaningService:
             selected_actions=config,
         )
 
-        def _worker(job_id, dataset_id, cfg):
-
-            try:
-                job_obj = CleaningJob.objects.get(id=job_id)
-                dataset_obj = Dataset.objects.get(id=dataset_id)
-
-                job_obj.status = CleaningStatus.RUNNING
-                job_obj.save(update_fields=["status"])
-
-                dataset_obj.status = "CLEANING"
-                dataset_obj.save(update_fields=["status", "updated_at"])
-
-                cleaning_summary = {}
-
-                df = CleaningService.load_dataframe(dataset_obj)
-
-                df = DataPreprocessingService.preprocess_dataframe(df)
-
-                if cfg.get("remove_duplicates"):
-                    df, duplicate_summary = CleaningService.remove_duplicates(df)
-                    cleaning_summary.update(duplicate_summary)
-
-                if cfg.get("handle_missing_values"):
-                    df, missing_summary = CleaningService.handle_missing_values(df)
-                    cleaning_summary.update(missing_summary)
-
-                text_config = cfg.get("standardize_text", {})
-                if text_config.get("enabled"):
-                    df, text_summary = CleaningService.standardize_text(
-                        df, text_config.get("columns", [])
-                    )
-                    cleaning_summary.update(text_summary)
-
-                date_config = cfg.get("standardize_dates", {})
-                if date_config.get("enabled"):
-                    df, date_summary = CleaningService.standardize_dates(
-                        df,
-                        date_config.get("columns", []),
-                        parsing_mode=date_config.get("parsing_mode", "auto"),
-                        day_first=date_config.get("day_first", True),
-                    )
-                    cleaning_summary.update(date_summary)
-
-                datatype_config = cfg.get("fix_data_types", {})
-                if datatype_config.get("enabled"):
-                    df, datatype_summary = CleaningService.fix_data_types(
-                        df, datatype_config.get("columns", [])
-                    )
-                    cleaning_summary.update(datatype_summary)
-
-                exported_files = CleaningService.export_cleaned_files(df, dataset_obj)
-
-                csv_filename, csv_path = exported_files["csv"]
-                xlsx_filename, xlsx_path = exported_files["xlsx"]
-
-                with open(csv_path, "rb") as cleaned_csv_file:
-                    job_obj.cleaned_csv_file.save(
-                        csv_filename,
-                        File(cleaned_csv_file),
-                        save=False,
-                    )
-                job_obj.cleaned_file.name = job_obj.cleaned_csv_file.name
-                with open(xlsx_path, "rb") as cleaned_xlsx_file:
-                    job_obj.cleaned_xlsx_file.save(
-                        xlsx_filename,
-                        File(cleaned_xlsx_file),
-                        save=False,
-                    )
-
-                job_obj.rows_before = cleaning_summary.get("rows_before", len(df))
-                job_obj.rows_after = cleaning_summary.get("rows_after", len(df))
-                job_obj.duplicates_removed = cleaning_summary.get(
-                    "duplicates_removed", 0
-                )
-                job_obj.cleaning_summary = cleaning_summary
-                job_obj.status = CleaningStatus.COMPLETED
-                job_obj.save()
-
-                dataset_obj.status = "COMPLETED"
-                dataset_obj.save(update_fields=["status", "updated_at"])
-
-                os.remove(csv_path)
-                os.remove(xlsx_path)
-                os.rmdir(exported_files["directory"])
-
-            except Exception:
-                try:
-                    job_obj.status = CleaningStatus.FAILED
-                    job_obj.save()
-                except Exception:
-                    pass
-                try:
-                    dataset_obj.status = "FAILED"
-                    dataset_obj.save(update_fields=["status", "updated_at"])
-                except Exception:
-                    pass
-                # Log traceback to stdout for developer visibility
-                traceback.print_exc()
-
-        # If task queue is enabled in settings, dispatch a Celery task.
+        # Dispatch via Celery when enabled; otherwise run in a background thread.
         from django.conf import settings
 
         if getattr(settings, "USE_TASK_QUEUE", False):
@@ -412,7 +313,9 @@ class CleaningService:
                 traceback.print_exc()
 
         thread = threading.Thread(
-            target=_worker, args=(job.id, dataset.id, config), daemon=True
+            target=CleaningService._execute_cleaning,
+            args=(job.id, dataset.id, config),
+            daemon=True,
         )
         thread.start()
 
@@ -421,31 +324,63 @@ class CleaningService:
     # Expose internal worker for Celery task reuse
     @staticmethod
     def _run_cleaning_worker(job_id, dataset_id, cfg):
-        # Reuse the worker implementation above by calling it directly.
-        # This keeps logic in one place but allows Celery to call the function.
-        # For clarity, import the current module and invoke the inner worker.
-        from apps.cleaning.services.cleaning_service import CleaningService as _CS
+        # Delegate to the centralized executor which contains the cleaning
+        # workflow. This keeps behavior identical across thread and Celery.
+        return CleaningService._execute_cleaning(job_id, dataset_id, cfg)
 
-        # The original worker logic is defined inside run_cleaning; to avoid
-        # duplicating code in multiple places, call run_cleaning with a flag
-        # to force synchronous execution. Implemented here as a minimal shim.
-        # Create a temporary job object to match expectations and run inline.
+            with open(csv_path, "rb") as cleaned_csv_file:
+                job_obj.cleaned_csv_file.save(
+                    csv_filename,
+                    File(cleaned_csv_file),
+                    save=False,
+                )
+            job_obj.cleaned_file.name = job_obj.cleaned_csv_file.name
+            with open(xlsx_path, "rb") as cleaned_xlsx_file:
+                job_obj.cleaned_xlsx_file.save(
+                    xlsx_filename,
+                    File(cleaned_xlsx_file),
+                    save=False,
+                )
 
-        # NOTE: For now we reuse the threaded worker by directly executing its
-        # logic; since the code for the worker is defined inside run_cleaning,
-        # we should keep worker logic factored out in future refactors.
+            job_obj.rows_before = cleaning_summary.get("rows_before", len(df))
+            job_obj.rows_after = cleaning_summary.get("rows_after", len(df))
+            job_obj.duplicates_removed = cleaning_summary.get(
+                "duplicates_removed", 0
+            )
+            job_obj.cleaning_summary = cleaning_summary
+            job_obj.status = CleaningStatus.COMPLETED
+            job_obj.save()
 
-        # Simple approach: call run_cleaning and let the function dispatch
-        # the worker synchronously by setting USE_TASK_QUEUE=False. To avoid
-        # infinite recursion, we directly execute the worker logic defined
-        # in the closure above. For brevity, call the closure by reusing
-        # the same module-level implementation: import and call the private
-        # helper if present.
-        # As a pragmatic step, reconstruct the same behavior by copying
-        # the worker steps here (keeps Celery and thread behaviors consistent).
+            dataset_obj.status = "COMPLETED"
+            dataset_obj.save(update_fields=["status", "updated_at"])
+
+            os.remove(csv_path)
+            os.remove(xlsx_path)
+            os.rmdir(exported_files["directory"])
+
+        except Exception:
+            try:
+                job_obj.status = CleaningStatus.FAILED
+                job_obj.save()
+            except Exception:
+                pass
+            try:
+                dataset_obj.status = "FAILED"
+                dataset_obj.save(update_fields=["status", "updated_at"])
+            except Exception:
+                pass
+            traceback.print_exc()
+
+    @staticmethod
+    def _execute_cleaning(job_id, dataset_id, cfg):
+        """Centralized cleaning executor shared by threads and Celery workers.
+
+        This method performs the step-by-step cleaning workflow and updates
+        job/dataset records accordingly. Keeping it as a single function
+        avoids divergence between execution paths.
+        """
 
         try:
-            # Load required objects and repeat the worker flow
             job_obj = CleaningJob.objects.get(id=job_id)
             dataset_obj = Dataset.objects.get(id=dataset_id)
 

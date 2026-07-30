@@ -9,3 +9,6 @@ coverage
 black
 
 flake8
+ 
+celery
+redis

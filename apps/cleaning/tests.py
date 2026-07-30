@@ -182,6 +182,37 @@ class CleaningWorkflowTests(TestCase):
         self.assertEqual(detail_response.status_code, 404)
         self.assertEqual(download_response.status_code, 404)
 
+    def test_cleaning_with_task_queue_eager(self):
+        # Run Celery in eager mode so tasks execute synchronously during tests.
+        from config.celery import app as celery_app
+
+        prev = celery_app.conf.task_always_eager
+        celery_app.conf.task_always_eager = True
+
+        try:
+            with override_settings(USE_TASK_QUEUE=True):
+                job = CleaningService.run_cleaning(
+                    self.dataset,
+                    {
+                        "remove_duplicates": True,
+                        "handle_missing_values": False,
+                        "standardize_text": {"enabled": True, "columns": ["name"]},
+                        "standardize_dates": {
+                            "enabled": True,
+                            "columns": ["event_date"],
+                            "parsing_mode": "auto",
+                        },
+                        "fix_data_types": {"enabled": False, "columns": []},
+                    },
+                )
+
+                self.assertEqual(job.status, "COMPLETED")
+                self.assertTrue(job.cleaned_csv_file)
+                self.assertTrue(job.cleaned_xlsx_file)
+
+        finally:
+            celery_app.conf.task_always_eager = prev
+
     def test_history_shows_newest_cleaning_jobs_first(self):
         older_job = CleaningJob.objects.create(
             dataset=self.dataset,

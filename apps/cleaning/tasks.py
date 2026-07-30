@@ -11,5 +11,6 @@ def run_cleaning_task(self, job_id, dataset_id, config):
     so the worker process executes the same logic as the POC thread worker.
     """
 
-    # Delegate to the service's internal worker function if available
-    CleaningService._run_cleaning_worker(job_id, dataset_id, config)
+    # Delegate to the centralized executor so worker processes run the same
+    # implementation as the in-process thread used by the POC.
+    CleaningService._execute_cleaning(job_id, dataset_id, config)
